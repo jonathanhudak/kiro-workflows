@@ -1,0 +1,22 @@
+# Progress Log
+Run: feature-dev
+Task: Build production-ready Kiro CLI multi-agent workflow system
+Started: 2026-02-10T08:32:00-08:00
+
+## Codebase Patterns
+- This is a config/content repo — no build system, no package.json
+- Agent files are JSON in .kiro/agents/, one per agent role
+- Valid Kiro tools: fs_read, fs_write, fs_list, execute_bash, use_mcp
+- Agent JSON schema: name, description, prompt, tools, allowedTools, resources
+- allowedTools must be a subset of tools
+- Steering files are markdown in .kiro/steering/
+- Tests are bash scripts in tests/
+
+---
+
+## 2026-02-10 08:32 - US-001: Validate and normalize all agent JSON files
+- Fixed allowedTools for 5 agents to match their tools array (compound, developer, fixer, planner, tester)
+- Created validate-agents.sh with checks for: JSON validity, required fields, valid tool names, allowedTools⊆tools
+- Created tests/test-validate-agents.sh with 11 test cases
+- **Learnings:** planner only had fs_read+fs_list in allowedTools despite needing fs_write; the pattern of tools vs allowedTools is intentional (tools=capabilities, allowedTools=permissions) but they were inconsistent
+---
