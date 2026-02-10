@@ -20,7 +20,7 @@ timeout: 30
 description: Validate agent JSON files before allowing a commit
 steps:
   - action: run-script
-    command: ./tests/validate-agents.sh
+    command: ./validate-agents.sh
     fail_on_error: true
     message: "Agent validation failed. Fix agent JSON files before committing."
 ```
