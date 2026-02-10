@@ -28,3 +28,12 @@ Started: 2026-02-10T08:32:00-08:00
 - Created tests/test-agent-prompts.sh with 13 test cases covering prompt length, content requirements, and JSON validity
 - **Learnings:** Antfarm agents in ~/Projects/antfarm/agents/shared/ have role-specific AGENTS.md files; good patterns: structured output formats, explicit "what NOT to do" sections, checklist-style verification
 ---
+
+## 2026-02-10 09:02 - US-004: Improve reviewer, verifier, and compound agent prompts
+- Enhanced reviewer.json: added structured output with 🔴/🟡/🟢 severity levels, APPROVE/REQUEST_CHANGES/COMMENT decisions, detailed checklists for correctness/security/performance/style/tests/docs
+- Enhanced verifier.json: added explicit Decision Framework with approve/reject criteria (inspired by antfarm verifier), STATUS: done/retry output format, evidence-based verification, ISSUES + SUGGESTIONS sections
+- Enhanced compound.json: added YAML frontmatter format for learning files, output to docs/learnings/ with date-slug filenames, categories (technical/process/quality), patterns/anti-patterns sections, steering update instructions
+- Created tests/test-enhanced-prompts.sh with 33 test cases
+- Files changed: .kiro/agents/reviewer.json, .kiro/agents/verifier.json, .kiro/agents/compound.json, tests/test-enhanced-prompts.sh
+- **Learnings:** Antfarm verifier's decision framework (approve if ALL true, reject if ANY true) is a clean pattern for quality gates; compound agent's learning file with YAML frontmatter is more structured than inline markdown
+---
