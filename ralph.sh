@@ -18,6 +18,9 @@ KIRO_AGENT="${KIRO_AGENT:-developer}"
 VERIFY_AGENT="${KIRO_VERIFY_AGENT:-verifier}"
 COMPOUND_AGENT="${KIRO_COMPOUND_AGENT:-compound}"
 VERIFY_EACH="${KIRO_VERIFY_EACH:-true}"
+USE_ACP="${KIRO_USE_ACP:-false}"  # Use ACP protocol for faster agent switching
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Colors
 RED='\033[0;31m'
@@ -51,6 +54,41 @@ check_prereqs() {
         error "Not in a git repository. Initialize one first."
         exit 1
     fi
+}
+
+# ─── Agent execution (CLI or ACP) ───────────────────────────────
+
+# Run a prompt with a specific agent
+# Uses ACP if enabled, otherwise shells out to kiro-cli
+run_agent() {
+    local agent="$1"
+    local prompt="$2"
+    
+    if [ "$USE_ACP" = "true" ]; then
+        _run_agent_acp "$agent" "$prompt"
+    else
+        _run_agent_cli "$agent" "$prompt"
+    fi
+}
+
+_run_agent_cli() {
+    local agent="$1"
+    local prompt="$2"
+    echo "$prompt" | kiro-cli --agent "$agent" 2>&1
+}
+
+_run_agent_acp() {
+    local agent="$1"
+    local prompt="$2"
+    
+    # Each story gets a fresh session (Ralph pattern)
+    local session_id=$(acp_new_session "$(pwd)" "$agent")
+    if [ -z "$session_id" ]; then
+        error "Failed to create ACP session"
+        return 1
+    fi
+    
+    acp_prompt "$session_id" "$prompt"
 }
 
 # Get the next incomplete story from prd.json
@@ -172,13 +210,13 @@ run_iteration() {
     local prompt=$(build_prompt "$story" "$feedback" "$iteration")
     
     log "Running $KIRO_AGENT agent..."
-    echo "$prompt" | kiro-cli --agent "$KIRO_AGENT" 2>&1 | tee "/tmp/ralph-dev-output.txt"
+    run_agent "$KIRO_AGENT" "$prompt" | tee "/tmp/ralph-dev-output.txt"
     
     # Verify if enabled
     if [ "$VERIFY_EACH" = "true" ]; then
         log "Running $VERIFY_AGENT agent..."
         local verify_prompt=$(build_verify_prompt "$story")
-        local verify_output=$(echo "$verify_prompt" | kiro-cli --agent "$VERIFY_AGENT" 2>&1 | tee "/tmp/ralph-verify-output.txt")
+        local verify_output=$(run_agent "$VERIFY_AGENT" "$verify_prompt" | tee "/tmp/ralph-verify-output.txt")
         
         if echo "$verify_output" | head -5 | grep -q "^PASS"; then
             success "✅ Story verified: $story_title"
@@ -208,6 +246,18 @@ run_iteration() {
 # Main loop
 main() {
     check_prereqs
+    
+    # Initialize ACP if enabled
+    if [ "$USE_ACP" = "true" ]; then
+        if [ -f "$SCRIPT_DIR/acp-client.sh" ]; then
+            source "$SCRIPT_DIR/acp-client.sh"
+            log "Starting ACP agent..."
+            acp_start
+        else
+            warn "acp-client.sh not found, falling back to CLI mode"
+            USE_ACP=false
+        fi
+    fi
     
     local branch_name=$(jq -r '.branchName // "feature/ralph"' "$PRD_FILE")
     
@@ -280,7 +330,7 @@ main() {
         
         # Run compound agent for learnings
         log "Running compound agent for learnings extraction..."
-        kiro-cli --agent "$COMPOUND_AGENT" "Extract learnings from this workflow run. Review git log, progress.txt, and all changes."
+        run_agent "$COMPOUND_AGENT" "Extract learnings from this workflow run. Review git log, progress.txt, and all changes."
         
         success "Done! Branch '$branch_name' is ready for review."
     else
