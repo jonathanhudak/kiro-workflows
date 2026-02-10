@@ -57,3 +57,12 @@ Started: 2026-02-10T08:32:00-08:00
 - Created tests/test-hooks.sh — 19 test cases covering existence, sections, triggers, agent refs, timeouts, format consistency, and validator behavior
 - **Learnings:** Hook format follows pattern: # Hook: <name> header, then ## Trigger (event+when), ## Agent (agent+timeout), ## Action (description+steps), ## Context (explanation). Consistent with agent JSON pattern of structured, machine-parseable sections.
 ---
+
+## 2026-02-10 09:47 - US-007: Create setup.sh - detection and file copying
+- Created setup.sh with kiro-cli detection, copy/symlink modes, --force flag, and agent validation
+- Handles: --help, --symlink, --force, error on bad target/options, existing .kiro/ overwrite prompt
+- Uses rsync for copy (excludes .git, node_modules), ln -s for symlink mode
+- Runs validate-agents.sh after installation to verify agent JSON files
+- Created tests/test-setup.sh with 16 tests covering all modes and edge cases
+- **Learnings:** bash `((VAR++))` returns exit 1 when VAR is 0 — use `VAR=$((VAR + 1))` with `set -e`; `set -euo pipefail` + pipe to `grep -q` causes SIGPIPE issues — capture output to variable first
+---
