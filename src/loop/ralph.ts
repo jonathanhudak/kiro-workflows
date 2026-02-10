@@ -19,16 +19,19 @@ import { execSync } from "child_process";
 import { Story, WorkflowRun, RunConfig, DEFAULT_CONFIG } from "../types.js";
 import { AgentRunner } from "./agent-runner.js";
 import { log, success, warn, error } from "../utils.js";
+import { TerminalUI } from "../ui.js";
 
 export class RalphLoop {
   private runner: AgentRunner;
   private config: RunConfig;
   private run: WorkflowRun;
+  public ui?: TerminalUI;
 
-  constructor(run: WorkflowRun, config: Partial<RunConfig> = {}) {
+  constructor(run: WorkflowRun, config: Partial<RunConfig> = {}, ui?: TerminalUI) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.run = run;
     this.runner = new AgentRunner(this.config);
+    this.ui = ui;
   }
 
   /**
@@ -53,9 +56,8 @@ export class RalphLoop {
       story.status = "running";
       this.run.iteration = iteration;
 
-      log(`━━━ Iteration ${iteration}/${this.config.maxIterations} ━━━`);
-      log(`Story: ${story.title} (${story.id})`);
-      log(`Progress: ${this.countDone()}/${this.run.stories.length}`);
+      this.ui?.addActivity("ralph", `Story: ${story.id} — ${story.title}`);
+      this.ui?.render(this.run);
 
       const passed = await this.runStoryIteration(story, iteration);
 
@@ -64,20 +66,21 @@ export class RalphLoop {
         story.verifyFeedback = undefined;
         this.appendProgress(story, iteration);
         this.gitCommit(`feat(${story.id}): ${story.title}`);
-        success(`✅ ${story.title}`);
+        this.ui?.addActivity("ralph", `✅ ${story.id} done`);
       } else {
         story.retryCount++;
         if (story.retryCount >= story.maxRetries) {
-          error(`Max retries (${story.maxRetries}) for: ${story.title}`);
           story.status = "failed";
+          this.ui?.addActivity("ralph", `❌ ${story.id} failed after ${story.maxRetries} retries`);
         } else {
-          warn(`Retry ${story.retryCount}/${story.maxRetries}`);
-          story.status = "pending"; // Will be picked up next iteration
-          iteration--; // Don't count retries
+          story.status = "pending";
+          this.ui?.addActivity("verifier", `↩ ${story.id} retry ${story.retryCount}/${story.maxRetries}`);
+          iteration--;
         }
       }
 
       this.run.updatedAt = new Date().toISOString();
+      this.ui?.render(this.run);
     }
 
     // Final status
@@ -90,7 +93,8 @@ export class RalphLoop {
     const prompt = this.buildImplementPrompt(story, iteration);
 
     // Run developer agent (fresh session)
-    log(`Running developer agent...`);
+    this.ui?.addActivity("developer", `Implementing ${story.id}...`);
+    this.ui?.render(this.run);
     const devOutput = await this.runner.run("developer", prompt);
 
     if (!this.config.verifyEach) {
@@ -98,7 +102,8 @@ export class RalphLoop {
     }
 
     // Run verifier agent (fresh session)
-    log(`Running verifier agent...`);
+    this.ui?.addActivity("verifier", `Verifying ${story.id}...`);
+    this.ui?.render(this.run);
     const verifyPrompt = this.buildVerifyPrompt(story);
     const verifyOutput = await this.runner.run("verifier", verifyPrompt);
 

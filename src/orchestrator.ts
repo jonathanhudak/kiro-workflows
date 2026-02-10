@@ -18,16 +18,19 @@ import { WORKFLOWS } from "./workflows.js";
 import { RalphLoop } from "./loop/ralph.js";
 import { AgentRunner } from "./loop/agent-runner.js";
 import { log, success, warn, error } from "./utils.js";
+import { TerminalUI } from "./ui.js";
 
 export class WorkflowOrchestrator {
   private config: RunConfig;
   private runner: AgentRunner;
   private stateDir: string;
+  public ui: TerminalUI;
 
   constructor(config: Partial<RunConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.runner = new AgentRunner(this.config);
     this.stateDir = join(this.config.projectDir, ".kiro", ".workflows");
+    this.ui = new TerminalUI({ enabled: !config.verbose });
   }
 
   /**
@@ -39,8 +42,10 @@ export class WorkflowOrchestrator {
       throw new Error(`Unknown workflow: ${workflow}. Available: ${Object.keys(WORKFLOWS).join(", ")}`);
     }
 
-    log(`Starting ${workflow}: ${task}`);
-    log(`Pipeline: ${pipeline.steps.map((s) => s.agent).join(" → ")}`);
+    // Set up UI
+    const stepNames = pipeline.steps.map(s => s.agent);
+    this.ui.setPipeline(stepNames);
+    this.ui.addActivity("orchestrator", `Starting ${workflow}`);
 
     // Create branch
     const branchName = `workflow/${workflow}/${Date.now()}`;
@@ -63,10 +68,14 @@ export class WorkflowOrchestrator {
     };
 
     this.saveState(run);
+    this.ui.render(run);
 
     try {
-      for (const step of pipeline.steps) {
-        log(`━━━ Step: ${step.agent} (${step.role}) ━━━`);
+      for (let i = 0; i < pipeline.steps.length; i++) {
+        const step = pipeline.steps[i];
+        this.ui.setCurrentStep(i);
+        this.ui.addActivity(step.agent, `Starting ${step.role} step...`);
+        this.ui.render(run);
 
         if (step.role === "plan") {
           await this.stepPlan(run, step.agent);
@@ -78,17 +87,19 @@ export class WorkflowOrchestrator {
           await this.stepSingle(run, step);
         }
 
+        this.ui.addActivity(step.agent, `✅ ${step.role} complete`);
         this.saveState(run);
+        this.ui.render(run);
       }
 
       run.status = "done";
-      success(`🎉 Workflow complete! Branch: ${branchName}`);
     } catch (err: any) {
       run.status = "failed";
-      error(`Workflow failed: ${err.message}`);
+      this.ui.addActivity("orchestrator", `❌ ${err.message}`);
     }
 
     this.saveState(run);
+    this.ui.finish(run);
     await this.runner.cleanup();
     return run;
   }
@@ -139,7 +150,7 @@ Rules:
     const ralph = new RalphLoop(run, {
       ...this.config,
       verifyEach: step.verifyEach ?? this.config.verifyEach,
-    });
+    }, this.ui);
 
     const result = await ralph.execute();
 
