@@ -28,3 +28,11 @@ Started: 2026-02-10T08:32:00-08:00
 - Created tests/test-agent-prompts.sh with 13 test cases covering prompt length, content requirements, and JSON validity
 - **Learnings:** Antfarm agents in ~/Projects/antfarm/agents/shared/ have role-specific AGENTS.md files; good patterns: structured output formats, explicit "what NOT to do" sections, checklist-style verification
 ---
+
+## 2026-02-10 09:12 - US-004: Improve reviewer, verifier, and compound agent prompts
+- Enhanced reviewer.json: added BLOCKING/SHOULD_FIX/SUGGESTION severity levels, structured output format with file:line references, VERDICT summary block, steering file references
+- Enhanced verifier.json: added explicit Decision Framework with Approve (STATUS: done) and Reject (STATUS: retry) criteria, modeled after antfarm verifier AGENTS.md, STATUS as first-line output for automation
+- Enhanced compound.json: YAML frontmatter format (date, workflow, task, category, tags), output to docs/learnings/YYYY-MM-DD-slug.md, learning categories (technical/process/quality), one file per workflow run
+- Created tests/test-us004-prompts.sh with 21 test cases validating all prompt content requirements
+- **Learnings:** Verifier feedback was precise — always check that the actual file content matches the story spec, not just that "something was added". YAML frontmatter vs markdown headers is a meaningful distinction.
+---
