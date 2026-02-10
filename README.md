@@ -6,12 +6,22 @@ One command runs the full pipeline — planning, implementation, verification, t
 
 <img src="https://raw.githubusercontent.com/snarktank/ralph/main/ralph.webp" alt="Ralph" width="80">
 
+## Install
+
+```bash
+# Clone and install globally
+git clone https://github.com/jonathanhudak/kiro-workflows.git
+cd kiro-workflows
+npm install
+npm run build
+npm link
+```
+
+This gives you the `kiro-workflow` command globally.
+
 ## Quick Start
 
 ```bash
-# Install
-npm install -g kiro-workflows
-
 # Initialize agents + steering in your project
 cd /your/project
 kiro-workflow init
