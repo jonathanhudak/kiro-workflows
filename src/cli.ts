@@ -15,7 +15,7 @@ import { WorkflowOrchestrator } from "./orchestrator.js";
 import { WORKFLOWS } from "./workflows.js";
 import { WorkflowType, RunConfig, DEFAULT_CONFIG } from "./types.js";
 import { log, success, error } from "./utils.js";
-import { existsSync, cpSync, readdirSync } from "fs";
+import { existsSync, cpSync, readdirSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -29,6 +29,7 @@ kiro-workflow — Multi-agent development workflows for Kiro CLI
 USAGE:
   kiro-workflow run <workflow> "<task description>"
   kiro-workflow init [--dir <path>]
+  kiro-workflow setup [--global] [--mcp] [--agents] [--steering]
   kiro-workflow status
   kiro-workflow list
 
@@ -43,11 +44,20 @@ OPTIONS:
   --no-verify      Skip verification after each story
   --verbose        Show detailed output
 
+SETUP:
+  --global         Install to ~/.kiro/ (available in all projects)
+  --mcp            Configure MCP servers only
+  --agents         Configure agents only
+  --steering       Configure steering files only
+  --detect         Auto-detect project stack and generate steering
+
 EXAMPLES:
   kiro-workflow run feature-dev "Add user authentication with OAuth2"
   kiro-workflow run bug-fix "Fix: login form submits twice on slow connections"
   kiro-workflow run security-audit "Audit the API authentication module"
   kiro-workflow init                # Copy .kiro/ agents + steering into current project
+  kiro-workflow setup               # Auto-configure everything for current project
+  kiro-workflow setup --global      # Install agents + MCP globally to ~/.kiro/
 `);
 }
 
@@ -67,6 +77,9 @@ async function main() {
       break;
     case "init":
       commandInit(args.slice(1));
+      break;
+    case "setup":
+      commandSetup(args.slice(1));
       break;
     case "list":
       commandList();
@@ -160,6 +173,317 @@ function commandInit(args: string[]) {
   log("  .kiro/steering/structure.md — your codebase layout");
   log("  .kiro/steering/tech.md — your tech stack");
   log("  .kiro/steering/product.md — your business context");
+}
+
+function commandSetup(args: string[]) {
+  const isGlobal = args.includes("--global");
+  const mcpOnly = args.includes("--mcp");
+  const agentsOnly = args.includes("--agents");
+  const steeringOnly = args.includes("--steering");
+  const autoDetect = args.includes("--detect") || (!mcpOnly && !agentsOnly && !steeringOnly);
+  const all = !mcpOnly && !agentsOnly && !steeringOnly;
+
+  const targetDir = isGlobal
+    ? join(process.env.HOME || "~", ".kiro")
+    : join(process.cwd(), ".kiro");
+
+  const targetLabel = isGlobal ? "~/.kiro (global)" : `.kiro/ (${process.cwd()})`;
+
+  log(`Setting up Kiro workflows in ${targetLabel}`);
+
+  // Ensure directories
+  for (const dir of ["agents", "steering", "settings", "hooks"]) {
+    const p = join(targetDir, dir);
+    if (!existsSync(p)) mkdirSync(p, { recursive: true });
+  }
+
+  // --- Agents ---
+  if (all || agentsOnly) {
+    const agentsSrc = join(ASSETS_DIR, "agents");
+    if (existsSync(agentsSrc)) {
+      const agents = readdirSync(agentsSrc).filter(f => f.endsWith(".json"));
+      for (const agent of agents) {
+        const dest = join(targetDir, "agents", agent);
+        const exists = existsSync(dest);
+        cpSync(join(agentsSrc, agent), dest, { force: false });
+        if (!exists) {
+          log(`  + agents/${agent}`);
+        } else {
+          log(`  · agents/${agent} (exists, skipped)`);
+        }
+      }
+      success(`${agents.length} agents configured`);
+    }
+  }
+
+  // --- MCP Servers ---
+  if (all || mcpOnly) {
+    const mcpDest = join(targetDir, "settings", "mcp.json");
+    const mcpSrc = join(ASSETS_DIR, "settings", "mcp.json");
+
+    if (existsSync(mcpDest)) {
+      // Merge: add any new servers without overwriting existing
+      try {
+        const existing = JSON.parse(readFileSync(mcpDest, "utf-8"));
+        const template = JSON.parse(readFileSync(mcpSrc, "utf-8"));
+        let added = 0;
+        for (const [name, config] of Object.entries(template.mcpServers || {})) {
+          if (!existing.mcpServers?.[name]) {
+            existing.mcpServers = existing.mcpServers || {};
+            (existing.mcpServers as Record<string, unknown>)[name] = config;
+            log(`  + mcp: ${name}`);
+            added++;
+          } else {
+            log(`  · mcp: ${name} (exists, skipped)`);
+          }
+        }
+        if (added > 0) {
+          writeFileSync(mcpDest, JSON.stringify(existing, null, 2) + "\n");
+        }
+        success(`MCP servers configured (${added} new)`);
+      } catch {
+        cpSync(mcpSrc, mcpDest);
+        success("MCP servers configured (fresh install)");
+      }
+    } else {
+      cpSync(mcpSrc, mcpDest);
+      success("MCP servers configured");
+    }
+
+    // Detect additional MCP servers based on project
+    if (autoDetect) {
+      const detected = detectMcpServers(process.cwd());
+      if (detected.length > 0) {
+        const mcpConfig = JSON.parse(readFileSync(mcpDest, "utf-8"));
+        for (const server of detected) {
+          if (!mcpConfig.mcpServers?.[server.name]) {
+            mcpConfig.mcpServers[server.name] = server.config;
+            log(`  + mcp: ${server.name} (auto-detected)`);
+          }
+        }
+        writeFileSync(mcpDest, JSON.stringify(mcpConfig, null, 2) + "\n");
+      }
+    }
+  }
+
+  // --- Steering ---
+  if (all || steeringOnly) {
+    const steeringSrc = join(ASSETS_DIR, "steering");
+    if (existsSync(steeringSrc)) {
+      const files = readdirSync(steeringSrc);
+      for (const file of files) {
+        const dest = join(targetDir, "steering", file);
+        if (!existsSync(dest)) {
+          cpSync(join(steeringSrc, file), dest);
+          log(`  + steering/${file}`);
+        } else {
+          log(`  · steering/${file} (exists, skipped)`);
+        }
+      }
+    }
+
+    // Auto-detect and generate project-specific steering
+    if (autoDetect && !isGlobal) {
+      generateSteering(process.cwd(), targetDir);
+    }
+
+    success("Steering files configured");
+  }
+
+  // --- Hooks ---
+  if (all) {
+    const hooksSrc = join(ASSETS_DIR, "hooks");
+    if (existsSync(hooksSrc)) {
+      const hooks = readdirSync(hooksSrc);
+      for (const hook of hooks) {
+        const dest = join(targetDir, "hooks", hook);
+        if (!existsSync(dest)) {
+          cpSync(join(hooksSrc, hook), dest);
+          log(`  + hooks/${hook}`);
+        }
+      }
+    }
+  }
+
+  console.log("");
+  success(`✅ Setup complete: ${targetLabel}`);
+
+  if (isGlobal) {
+    log("Agents and MCP servers are now available in all projects.");
+    log("Use 'kiro-workflow setup' (without --global) in a project to add steering.");
+  } else {
+    log("Next steps:");
+    log("  1. Review .kiro/steering/structure.md and .kiro/steering/tech.md");
+    log("  2. Run: kiro-workflow run feature-dev \"Your task here\"");
+  }
+}
+
+interface DetectedMcp {
+  name: string;
+  config: Record<string, unknown>;
+}
+
+function detectMcpServers(projectDir: string): DetectedMcp[] {
+  const detected: DetectedMcp[] = [];
+
+  // Postgres/DB
+  if (
+    existsSync(join(projectDir, "prisma")) ||
+    existsSync(join(projectDir, "drizzle.config.ts")) ||
+    existsSync(join(projectDir, "knexfile.js"))
+  ) {
+    detected.push({
+      name: "postgres",
+      config: {
+        command: "npx",
+        args: ["-y", "@modelcontextprotocol/server-postgres"],
+        env: { DATABASE_URL: "${DATABASE_URL}" },
+      },
+    });
+  }
+
+  // Docker
+  if (existsSync(join(projectDir, "docker-compose.yml")) || existsSync(join(projectDir, "Dockerfile"))) {
+    detected.push({
+      name: "docker",
+      config: {
+        command: "npx",
+        args: ["-y", "@modelcontextprotocol/server-docker"],
+        env: {},
+      },
+    });
+  }
+
+  // AWS (CDK / SAM / CloudFormation)
+  if (
+    existsSync(join(projectDir, "cdk.json")) ||
+    existsSync(join(projectDir, "template.yaml")) ||
+    existsSync(join(projectDir, "samconfig.toml"))
+  ) {
+    detected.push({
+      name: "aws",
+      config: {
+        command: "npx",
+        args: ["-y", "@modelcontextprotocol/server-aws"],
+        env: {},
+      },
+    });
+  }
+
+  // Puppeteer / browser testing
+  if (existsSync(join(projectDir, "playwright.config.ts")) || existsSync(join(projectDir, "cypress.config.ts"))) {
+    detected.push({
+      name: "puppeteer",
+      config: {
+        command: "npx",
+        args: ["-y", "@modelcontextprotocol/server-puppeteer"],
+        env: {},
+      },
+    });
+  }
+
+  // Slack
+  if (existsSync(join(projectDir, "slack.json")) || existsSync(join(projectDir, ".slack"))) {
+    detected.push({
+      name: "slack",
+      config: {
+        command: "npx",
+        args: ["-y", "@modelcontextprotocol/server-slack"],
+        env: { SLACK_BOT_TOKEN: "${SLACK_BOT_TOKEN}" },
+      },
+    });
+  }
+
+  return detected;
+}
+
+function generateSteering(projectDir: string, kiroDir: string) {
+  // Auto-detect tech stack
+  const techLines: string[] = ["# Tech Stack\n", "*Auto-generated by kiro-workflow setup*\n"];
+  const structLines: string[] = ["# Project Structure\n", "*Auto-generated by kiro-workflow setup*\n"];
+
+  // Package.json detection
+  const pkgPath = join(projectDir, "package.json");
+  if (existsSync(pkgPath)) {
+    try {
+      const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+
+      techLines.push("## Stack\n");
+      const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+
+      if (deps["react"]) techLines.push("- React" + (deps["next"] ? " (Next.js)" : ""));
+      if (deps["vue"]) techLines.push("- Vue");
+      if (deps["angular"]) techLines.push("- Angular");
+      if (deps["express"]) techLines.push("- Express");
+      if (deps["fastify"]) techLines.push("- Fastify");
+      if (deps["hono"]) techLines.push("- Hono");
+      if (deps["prisma"]) techLines.push("- Prisma ORM");
+      if (deps["drizzle-orm"]) techLines.push("- Drizzle ORM");
+      if (deps["typescript"]) techLines.push("- TypeScript");
+      if (deps["tailwindcss"]) techLines.push("- Tailwind CSS");
+      if (deps["jest"]) techLines.push("- Jest (testing)");
+      if (deps["vitest"]) techLines.push("- Vitest (testing)");
+      if (deps["mocha"]) techLines.push("- Mocha (testing)");
+      if (deps["playwright"]) techLines.push("- Playwright (e2e)");
+      if (deps["cypress"]) techLines.push("- Cypress (e2e)");
+
+      techLines.push("\n## Scripts\n");
+      if (pkg.scripts) {
+        for (const [name, cmd] of Object.entries(pkg.scripts)) {
+          if (["build", "dev", "start", "test", "lint", "format", "typecheck"].includes(name)) {
+            techLines.push(`- \`npm run ${name}\`: \`${cmd}\``);
+          }
+        }
+      }
+    } catch { /* skip */ }
+  }
+
+  // Cargo.toml (Rust)
+  if (existsSync(join(projectDir, "Cargo.toml"))) {
+    techLines.push("## Stack\n", "- Rust", "- Cargo\n");
+    techLines.push("## Scripts\n", "- `cargo build`: Build", "- `cargo test`: Test", "- `cargo clippy`: Lint");
+  }
+
+  // Go
+  if (existsSync(join(projectDir, "go.mod"))) {
+    techLines.push("## Stack\n", "- Go\n");
+    techLines.push("## Scripts\n", "- `go build ./...`: Build", "- `go test ./...`: Test");
+  }
+
+  // Python
+  if (existsSync(join(projectDir, "pyproject.toml")) || existsSync(join(projectDir, "setup.py"))) {
+    techLines.push("## Stack\n", "- Python\n");
+    if (existsSync(join(projectDir, "pyproject.toml"))) {
+      techLines.push("- pyproject.toml based");
+    }
+  }
+
+  // Directory structure
+  try {
+    const topLevel = readdirSync(projectDir, { withFileTypes: true })
+      .filter(d => !d.name.startsWith(".") && d.name !== "node_modules" && d.name !== "dist" && d.name !== "__pycache__")
+      .slice(0, 20);
+
+    structLines.push("## Directory Layout\n", "```");
+    for (const entry of topLevel) {
+      const suffix = entry.isDirectory() ? "/" : "";
+      structLines.push(`${entry.name}${suffix}`);
+    }
+    structLines.push("```");
+  } catch { /* skip */ }
+
+  // Write generated files
+  const techDest = join(kiroDir, "steering", "tech.md");
+  const structDest = join(kiroDir, "steering", "structure.md");
+
+  if (techLines.length > 3) {
+    writeFileSync(techDest, techLines.join("\n") + "\n");
+    log("  ✨ steering/tech.md (auto-generated from project)");
+  }
+  if (structLines.length > 3) {
+    writeFileSync(structDest, structLines.join("\n") + "\n");
+    log("  ✨ steering/structure.md (auto-generated from project)");
+  }
 }
 
 function commandList() {
