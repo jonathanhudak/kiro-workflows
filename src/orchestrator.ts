@@ -214,26 +214,73 @@ Do your job as the ${step.agent} agent. Review all changes and provide your outp
   }
 
   private parseStories(output: string): Story[] {
-    // Extract JSON from output (might be wrapped in markdown code blocks)
-    const jsonMatch = output.match(/\[[\s\S]*?\]/);
-    if (!jsonMatch) {
-      throw new Error("Planner did not output a valid JSON story array");
+    // Strip markdown code fences if present
+    const stripped = output.replace(/```(?:json)?\s*/g, "").replace(/```/g, "");
+
+    // Find the outermost JSON array using bracket balancing
+    const json = this.extractJsonArray(stripped);
+    if (!json) {
+      // Fallback: try greedy regex (last resort)
+      const greedyMatch = stripped.match(/\[[\s\S]*\]/);
+      if (!greedyMatch) {
+        throw new Error(
+          "Planner did not output a valid JSON story array. " +
+          `Output starts with: "${output.slice(0, 200)}..."`
+        );
+      }
+      return this.parseRawStories(greedyMatch[0]);
     }
 
-    try {
-      const raw = JSON.parse(jsonMatch[0]);
-      return raw.map((s: any) => ({
-        id: s.id,
-        title: s.title,
-        description: s.description,
-        acceptanceCriteria: s.acceptance_criteria || s.acceptanceCriteria || [],
-        status: "pending" as const,
-        retryCount: 0,
-        maxRetries: this.config.maxRetries,
-      }));
-    } catch {
-      throw new Error("Failed to parse stories JSON from planner output");
+    return this.parseRawStories(json);
+  }
+
+  private extractJsonArray(text: string): string | null {
+    // Find first '[' and match to its balanced ']'
+    const start = text.indexOf("[");
+    if (start === -1) return null;
+
+    let depth = 0;
+    for (let i = start; i < text.length; i++) {
+      if (text[i] === "[") depth++;
+      else if (text[i] === "]") depth--;
+      if (depth === 0) {
+        return text.slice(start, i + 1);
+      }
     }
+    return null; // Unbalanced
+  }
+
+  private parseRawStories(jsonStr: string): Story[] {
+    let raw: any[];
+    try {
+      raw = JSON.parse(jsonStr);
+    } catch (e) {
+      // Try fixing common LLM JSON issues: trailing commas
+      const cleaned = jsonStr
+        .replace(/,\s*]/g, "]")
+        .replace(/,\s*}/g, "}");
+      try {
+        raw = JSON.parse(cleaned);
+      } catch {
+        throw new Error(
+          `Failed to parse stories JSON. First 300 chars: "${jsonStr.slice(0, 300)}"`
+        );
+      }
+    }
+
+    if (!Array.isArray(raw) || raw.length === 0) {
+      throw new Error("Planner output parsed but is not a non-empty array");
+    }
+
+    return raw.map((s: any) => ({
+      id: s.id || s.story_id || `story-${Math.random().toString(36).slice(2, 6)}`,
+      title: s.title || s.name || "Untitled story",
+      description: s.description || "",
+      acceptanceCriteria: s.acceptance_criteria || s.acceptanceCriteria || s.criteria || [],
+      status: "pending" as const,
+      retryCount: 0,
+      maxRetries: this.config.maxRetries,
+    }));
   }
 
   private gitCheckout(branch: string) {
