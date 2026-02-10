@@ -36,3 +36,15 @@ Started: 2026-02-10T08:32:00-08:00
 - Created tests/test-us004-prompts.sh with 21 test cases validating all prompt content requirements
 - **Learnings:** Verifier feedback was precise — always check that the actual file content matches the story spec, not just that "something was added". YAML frontmatter vs markdown headers is a meaningful distinction.
 ---
+
+## 2026-02-10 09:22 - US-005: Improve tester, scanner, fixer, triager, and investigator agent prompts
+- Enhanced all 5 agent prompts to 4000-5200 chars each (from ~500-900, well over 2x)
+- tester.json: added test file naming conventions, coverage expectations, AAA test structure template, parameterized test guidance
+- scanner.json: added 6-phase scanning methodology with specific commands (npm audit, grep for secrets, license-checker), severity classification table
+- fixer.json: added fix workflow (understand→design→apply→test→verify), fix documentation template with CWE references, regression test requirements
+- triager.json: added priority classification table (P0-P3), escalation criteria, effort estimation (S/M/L/XL), blast radius analysis
+- investigator.json: added 6-phase investigation methodology, git bisect walkthrough, log analysis commands, hypothesis tracking table
+- All prompts include structured output format sections and "What NOT to Do" sections
+- Created tests/test-us005-prompts.sh with 33 test cases — all passing
+- **Learnings:** Consistent prompt structure across agents (Methodology → Classification → What NOT to Do → Structured Output) makes them predictable and composable
+---
