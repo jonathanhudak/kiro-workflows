@@ -20,3 +20,11 @@ Started: 2026-02-10T08:32:00-08:00
 - Created tests/test-validate-agents.sh with 11 test cases
 - **Learnings:** planner only had fs_read+fs_list in allowedTools despite needing fs_write; the pattern of tools vs allowedTools is intentional (tools=capabilities, allowedTools=permissions) but they were inconsistent
 ---
+
+## 2026-02-10 08:52 - US-003: Improve planner and developer agent prompts using antfarm inspiration
+- Enhanced planner.json prompt from 577 to 3185 chars (5.5x): added EARS notation examples, 3-phase workflow (requirements→design→tasks), output file specs (requirements.md, design.md, tasks.md), dependency ordering, task sizing (S/M/L), ADR format
+- Enhanced developer.json prompt from ~400 to 3022 chars: added progress tracking (.kiro/progress.md), commit discipline rules, test-writing requirements (happy path + 2 edge cases), error handling patterns, pre-submit checklist
+- Drew inspiration from antfarm agents: verifier's checklist approach, setup agent's structured output, compound agent's reflection pattern
+- Created tests/test-agent-prompts.sh with 13 test cases covering prompt length, content requirements, and JSON validity
+- **Learnings:** Antfarm agents in ~/Projects/antfarm/agents/shared/ have role-specific AGENTS.md files; good patterns: structured output formats, explicit "what NOT to do" sections, checklist-style verification
+---
