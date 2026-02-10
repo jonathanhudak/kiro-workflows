@@ -56,6 +56,8 @@ export class TerminalUI {
   private pipelineSteps: string[] = [];
   private currentStepIndex = -1;
   private enabled: boolean;
+  private refreshTimer?: ReturnType<typeof setInterval>;
+  private lastRun?: WorkflowRun;
 
   constructor(opts: { enabled?: boolean } = {}) {
     this.startTime = Date.now();
@@ -63,8 +65,16 @@ export class TerminalUI {
 
     if (this.enabled) {
       process.stderr.write(HIDE_CURSOR);
-      // Show cursor on exit
-      const cleanup = () => process.stderr.write(SHOW_CURSOR);
+      // Auto-refresh every 1s to keep elapsed time and spinner alive
+      this.refreshTimer = setInterval(() => {
+        if (this.lastRun) this.render(this.lastRun);
+      }, 1000);
+      this.refreshTimer.unref(); // Don't block process exit
+
+      const cleanup = () => {
+        if (this.refreshTimer) clearInterval(this.refreshTimer);
+        process.stderr.write(SHOW_CURSOR);
+      };
       process.on("exit", cleanup);
       process.on("SIGINT", () => { cleanup(); process.exit(130); });
       process.on("SIGTERM", () => { cleanup(); process.exit(143); });
@@ -90,6 +100,7 @@ export class TerminalUI {
 
   render(run: WorkflowRun) {
     if (!this.enabled) return;
+    this.lastRun = run;
 
     const lines: string[] = [];
     const done = run.stories.filter(s => s.status === "done").length;
@@ -170,6 +181,7 @@ export class TerminalUI {
    * Final render — show cursor, print summary.
    */
   finish(run: WorkflowRun) {
+    if (this.refreshTimer) clearInterval(this.refreshTimer);
     if (this.enabled) {
       process.stderr.write(SHOW_CURSOR);
     }
@@ -188,10 +200,16 @@ export class TerminalUI {
   }
 }
 
+const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+let spinFrame = 0;
+
 function storyIcon(story: Story): string {
   switch (story.status) {
     case "done": return `${GREEN}✅${NC}`;
-    case "running": return `${CYAN}⏳${NC}`;
+    case "running": {
+      const frame = SPINNER[spinFrame++ % SPINNER.length];
+      return `${CYAN}${frame}${NC}`;
+    }
     case "failed": return `${RED}❌${NC}`;
     default: return `${GRAY}⬚${NC}`;
   }
