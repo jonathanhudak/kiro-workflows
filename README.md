@@ -2,172 +2,173 @@
 
 Multi-agent development workflows for [Kiro CLI](https://kiro.dev/cli/), inspired by [antfarm](https://github.com/snarktank/antfarm).
 
-Structured spec-driven pipelines for feature development, bug fixes, and security audits — using Kiro's custom agents, steering files, and hooks.
+One command runs the full pipeline — planning, implementation, verification, testing, review, and learnings extraction. The [Ralph loop](https://github.com/snarktank/ralph) runs under the hood.
 
-### Built on the Ralph Loop
-
-<img src="https://raw.githubusercontent.com/snarktank/ralph/main/ralph.webp" alt="Ralph" width="100">
-
-Each agent runs in a fresh session with clean context. Memory persists through git history and progress files — the same autonomous loop pattern from [Ralph](https://github.com/snarktank/ralph), scaled to multi-agent workflows with Kiro CLI.
+<img src="https://raw.githubusercontent.com/snarktank/ralph/main/ralph.webp" alt="Ralph" width="80">
 
 ## Quick Start
 
 ```bash
-# Install Kiro CLI
-curl -fsSL https://cli.kiro.dev/install | bash
+# Install
+npm install -g kiro-workflows
 
-# Clone into your project
-git clone https://github.com/jonathanhudak/kiro-workflows.git
-cp -r kiro-workflows/.kiro /path/to/your/project/.kiro
+# Initialize agents + steering in your project
+cd /your/project
+kiro-workflow init
 
-# Or install globally
-cp -r kiro-workflows/.kiro ~/.kiro
+# Customize steering for your codebase
+# (edit .kiro/steering/structure.md, tech.md, product.md)
+
+# Run a workflow
+kiro-workflow run feature-dev "Add user authentication with OAuth2"
 ```
 
-## What's Included
+That's it. The library handles everything: breaking the task into stories, implementing them one by one in fresh agent sessions, verifying each story against acceptance criteria, retrying with feedback on failure, and extracting learnings when done.
 
-### Agents (`.kiro/agents/`)
+## How It Works
 
-| Agent | Role | Workflow |
-|-------|------|----------|
-| `planner` | Break down features into specs & tasks | feature-dev |
-| `developer` | Implement code from task specs | feature-dev, bug-fix |
-| `reviewer` | Review code for quality, patterns, security | all |
-| `verifier` | Run tests, verify acceptance criteria | all |
-| `tester` | Write and run test suites | feature-dev, security-audit |
-| `triager` | Classify and prioritize bugs | bug-fix |
-| `investigator` | Root-cause analysis | bug-fix |
-| `scanner` | Security vulnerability scanning | security-audit |
-| `fixer` | Apply security fixes | security-audit |
-| `compound` | Extract learnings from completed work | all |
+```
+kiro-workflow run feature-dev "Add OAuth2"
+    │
+    ├── 1. Planner agent breaks task into stories
+    │      (each small enough for one agent session)
+    │
+    ├── 2. Ralph Loop (for each story):
+    │      ├── Developer agent implements (fresh session)
+    │      ├── Verifier agent checks acceptance criteria
+    │      ├── FAIL? → retry with feedback (up to 3x)
+    │      └── PASS? → next story
+    │
+    ├── 3. Tester agent runs test suite
+    ├── 4. Reviewer agent reviews all changes
+    └── 5. Compound agent extracts learnings
+           → updates .kiro/steering/learnings.md
+```
 
-### Steering Files (`.kiro/steering/`)
+Each agent runs in a **fresh session with clean context**. Memory persists only through git history and steering files — the Ralph pattern.
 
-- `structure.md` — Codebase architecture and conventions
-- `tech.md` — Tech stack, patterns, dependencies
-- `product.md` — Business context and requirements
-- `workflows.md` — How multi-agent workflows operate
-- `learnings.md` — Accumulated insights from past runs (auto-updated by compound agent)
+## Commands
 
-### Hooks (`.kiro/hooks/`)
+```bash
+kiro-workflow run <workflow> "<task>"   # Run a complete workflow
+kiro-workflow init                      # Set up .kiro/ in your project
+kiro-workflow list                      # Show available workflows
+kiro-workflow status                    # Check recent run progress
+```
 
-- `post-review.md` — After code review, extract patterns
-- `post-merge.md` — After merge, run compound learnings extraction
+### Options
+
+```bash
+--acp            # Use ACP protocol (persistent process, faster)
+--max-iter <n>   # Max iterations (default: 15)
+--no-verify      # Skip verification after each story
+--verbose        # Detailed output
+```
 
 ## Workflows
 
-### Feature Development
-
+### `feature-dev`
+Plan, implement, test, and review a new feature.
 ```
-planner → developer → verifier → tester → reviewer → compound
-```
-
-1. **Planner** creates spec (requirements → design → tasks)
-2. **Developer** implements each task
-3. **Verifier** checks acceptance criteria
-4. **Tester** writes/runs test suite
-5. **Reviewer** reviews the diff
-6. **Compound** extracts learnings → updates `steering/learnings.md`
-
-### Bug Fix
-
-```
-triager → investigator → developer → verifier → reviewer → compound
+planner → developer (loop) → tester → reviewer → compound
 ```
 
-1. **Triager** classifies severity, identifies affected area
-2. **Investigator** performs root-cause analysis
-3. **Developer** implements fix
-4. **Verifier** confirms fix + no regressions
-5. **Reviewer** reviews the change
-6. **Compound** extracts learnings
-
-### Security Audit
-
+### `bug-fix`
+Triage, investigate, fix, and verify a bug.
 ```
-scanner → triager → fixer → verifier → tester → reviewer → compound
+triager → investigator → developer (loop) → reviewer → compound
 ```
 
-1. **Scanner** identifies vulnerabilities
-2. **Triager** prioritizes by severity/exploitability
-3. **Fixer** applies remediation
-4. **Verifier** confirms fixes
-5. **Tester** runs security test suite
-6. **Reviewer** reviews all changes
-7. **Compound** extracts learnings
+### `security-audit`
+Scan, prioritize, fix, and test security issues.
+```
+scanner → triager → fixer (loop) → tester → reviewer → compound
+```
 
-## Usage
+## Agents
 
-### The Ralph Loop (autonomous)
+10 specialized agents live in `.kiro/agents/`:
+
+| Agent | Role |
+|-------|------|
+| **planner** | Breaks features into stories with acceptance criteria |
+| **developer** | Implements code from specs |
+| **reviewer** | Reviews for quality, patterns, security |
+| **verifier** | Validates acceptance criteria pass |
+| **tester** | Writes and runs test suites |
+| **triager** | Classifies severity, prioritizes |
+| **investigator** | Root-cause analysis |
+| **scanner** | Security vulnerability detection |
+| **fixer** | Security remediation |
+| **compound** | Extracts learnings from completed work |
+
+## Steering Files
+
+Steering files in `.kiro/steering/` give agents persistent project context:
+
+| File | Purpose |
+|------|---------|
+| `structure.md` | Codebase architecture and directory layout |
+| `tech.md` | Tech stack, patterns, build/test commands |
+| `product.md` | Business context and requirements |
+| `workflows.md` | How the multi-agent pipeline operates |
+| `learnings.md` | Auto-updated insights from past runs |
+
+`kiro-workflow init` copies templates. Customize them for your project.
+
+## The Learnings Loop
+
+The **compound agent** runs after every workflow and:
+1. Reviews git diff and commit history
+2. Identifies what worked, what didn't, surprises
+3. Appends to `.kiro/steering/learnings.md` with date + tags
+4. Future runs load these learnings automatically
+
+Each workflow makes the next one smarter.
+
+## ACP Support
+
+Kiro CLI implements the [Agent Client Protocol](https://kiro.dev/docs/cli/acp/) — JSON-RPC 2.0 over stdin/stdout. Enable ACP mode for faster agent switching:
 
 ```bash
-# 1. Plan — create prd.json from a feature description
-kiro-cli --agent planner "Plan: Add user authentication with OAuth2"
-# Save the stories output as prd.json (see prd.json.example for format)
-
-# 2. Run the Ralph loop — autonomous implementation with verification
-./ralph.sh 10  # max 10 iterations
-
-# Ralph will:
-#   - Pick the next incomplete story from prd.json
-#   - Spawn a fresh developer agent to implement it
-#   - Spawn a verifier agent to check acceptance criteria
-#   - If FAIL: retry with feedback (up to 3 retries)
-#   - If PASS: mark story done, move to next
-#   - After all stories: run compound agent for learnings
+kiro-workflow run feature-dev "Add OAuth2" --acp
 ```
 
-### Manual agent switching
+ACP keeps a single persistent `kiro-cli acp` process running. Each story still gets a fresh session (Ralph pattern), but agent switching and session creation are faster.
 
-```bash
-# Switch to a specific agent
-kiro-cli /agent planner
-kiro-cli /agent reviewer
+## Programmatic API
 
-# Or run with a specific agent
-kiro-cli --agent planner "Plan the user authentication feature"
-kiro-cli --agent developer "Implement task 1 from the auth spec"
-kiro-cli --agent reviewer "Review the changes in this branch"
-kiro-cli --agent compound "Extract learnings from the auth feature work"
+```typescript
+import { WorkflowOrchestrator } from "kiro-workflows";
+
+const wf = new WorkflowOrchestrator({
+  projectDir: "/path/to/project",
+  maxIterations: 20,
+  verifyEach: true,
+  useAcp: true,
+});
+
+const result = await wf.run("feature-dev", "Add user authentication");
+console.log(result.status); // "done"
+console.log(result.stories); // [{id, title, status}, ...]
 ```
-
-### Environment variables
-
-```bash
-KIRO_AGENT=developer          # Default implementation agent
-KIRO_VERIFY_AGENT=verifier    # Verification agent
-KIRO_COMPOUND_AGENT=compound  # Learnings extraction agent
-KIRO_VERIFY_EACH=true         # Verify after each story (recommended)
-```
-
-## Learnings System
-
-The **compound agent** runs after each workflow and:
-
-1. Reviews git history and work artifacts
-2. Extracts patterns, mistakes, and insights
-3. Appends to `.kiro/steering/learnings.md` with metadata
-4. Future agent sessions automatically load relevant learnings via steering
-
-This creates a feedback loop — each workflow makes the next one better.
 
 ## Customization
 
 ### Add project-specific steering
 
-Create additional files in `.kiro/steering/`:
 ```markdown
 <!-- .kiro/steering/api-standards.md -->
 # API Standards
-- Use REST with JSON:API spec
+- REST with JSON:API spec
 - All endpoints require authentication
 - Rate limiting: 100 req/min per user
 ```
 
-### Add MCP servers
+### Configure MCP servers
 
-Configure in `.kiro/settings/mcp.json`:
 ```json
+// .kiro/settings/mcp.json
 {
   "mcpServers": {
     "database": {
@@ -178,16 +179,36 @@ Configure in `.kiro/settings/mcp.json`:
 }
 ```
 
-## Differences from Antfarm
+### Add custom agents
 
-| Feature | Antfarm (OpenClaw) | Kiro Workflows |
-|---------|-------------------|----------------|
-| Orchestration | SQLite + cron polling | Manual agent switching / specs |
-| Agent communication | Shared DB state | Steering files + specs |
-| Autonomy | Fully autonomous | Human-in-the-loop |
-| Learnings | `docs/learnings/*.md` | `steering/learnings.md` |
-| Auth | N/A (local) | AWS IAM Identity Center |
-| Platform | OpenClaw daemon | Kiro CLI (terminal) |
+Drop a JSON file in `.kiro/agents/`:
+```json
+{
+  "name": "db-specialist",
+  "description": "Database migration and query optimization expert",
+  "prompt": "You are a database specialist...",
+  "tools": ["fs_read", "fs_write", "execute_bash"],
+  "resources": ["file://.kiro/steering/tech.md"]
+}
+```
+
+## Compared to Antfarm
+
+| | Antfarm (OpenClaw) | Kiro Workflows |
+|---|---|---|
+| **Runtime** | OpenClaw daemon + SQLite + cron | Kiro CLI (terminal) |
+| **Orchestration** | Autonomous cron polling | CLI-driven with embedded Ralph loop |
+| **Agent sessions** | Fresh per cron tick | Fresh per story (same pattern) |
+| **Learnings** | `docs/learnings/*.md` | `.kiro/steering/learnings.md` |
+| **Auth** | N/A (local) | AWS IAM Identity Center |
+| **Use case** | Personal projects | Enterprise / work projects |
+
+## Prerequisites
+
+- [Kiro CLI](https://kiro.dev/cli/) installed (`curl -fsSL https://cli.kiro.dev/install | bash`)
+- Node.js 18+
+- Git
+- jq (optional, for setup.sh steering generation)
 
 ## License
 
