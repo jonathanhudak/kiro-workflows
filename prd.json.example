@@ -1,0 +1,40 @@
+{
+  "title": "User Authentication with OAuth2",
+  "branchName": "feature/oauth-auth",
+  "stories": [
+    {
+      "id": "setup-oauth",
+      "title": "Set up OAuth2 provider configuration",
+      "description": "Configure OAuth2 with Google as the identity provider. Add environment variables for client ID and secret.",
+      "acceptance_criteria": [
+        "OAuth2 client configuration reads from environment variables",
+        "Google provider is configured with correct scopes (email, profile)",
+        "Configuration validates on startup and fails fast with clear errors"
+      ],
+      "passes": false
+    },
+    {
+      "id": "auth-callback",
+      "title": "Implement OAuth2 callback endpoint",
+      "description": "Create the /auth/callback endpoint that handles the OAuth2 redirect and exchanges the code for tokens.",
+      "acceptance_criteria": [
+        "GET /auth/callback exchanges code for access token",
+        "Invalid or expired codes return 401 with error message",
+        "Successful auth creates a session cookie"
+      ],
+      "passes": false
+    },
+    {
+      "id": "session-mgmt",
+      "title": "Add session management",
+      "description": "Implement secure session handling with httpOnly cookies and proper expiration.",
+      "acceptance_criteria": [
+        "Sessions are stored server-side (not just JWT)",
+        "Cookies are httpOnly, secure, sameSite=strict",
+        "Sessions expire after 24 hours of inactivity",
+        "Logout endpoint destroys the session"
+      ],
+      "passes": false
+    }
+  ]
+}

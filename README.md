@@ -4,6 +4,12 @@ Multi-agent development workflows for [Kiro CLI](https://kiro.dev/cli/), inspire
 
 Structured spec-driven pipelines for feature development, bug fixes, and security audits — using Kiro's custom agents, steering files, and hooks.
 
+### Built on the Ralph Loop
+
+<img src="https://raw.githubusercontent.com/snarktank/ralph/main/ralph.webp" alt="Ralph" width="100">
+
+Each agent runs in a fresh session with clean context. Memory persists through git history and progress files — the same autonomous loop pattern from [Ralph](https://github.com/snarktank/ralph), scaled to multi-agent workflows with Kiro CLI.
+
 ## Quick Start
 
 ```bash
@@ -92,17 +98,46 @@ scanner → triager → fixer → verifier → tester → reviewer → compound
 
 ## Usage
 
+### The Ralph Loop (autonomous)
+
 ```bash
-# Switch to an agent
+# 1. Plan — create prd.json from a feature description
+kiro-cli --agent planner "Plan: Add user authentication with OAuth2"
+# Save the stories output as prd.json (see prd.json.example for format)
+
+# 2. Run the Ralph loop — autonomous implementation with verification
+./ralph.sh 10  # max 10 iterations
+
+# Ralph will:
+#   - Pick the next incomplete story from prd.json
+#   - Spawn a fresh developer agent to implement it
+#   - Spawn a verifier agent to check acceptance criteria
+#   - If FAIL: retry with feedback (up to 3 retries)
+#   - If PASS: mark story done, move to next
+#   - After all stories: run compound agent for learnings
+```
+
+### Manual agent switching
+
+```bash
+# Switch to a specific agent
 kiro-cli /agent planner
+kiro-cli /agent reviewer
 
 # Or run with a specific agent
 kiro-cli --agent planner "Plan the user authentication feature"
 kiro-cli --agent developer "Implement task 1 from the auth spec"
 kiro-cli --agent reviewer "Review the changes in this branch"
-
-# Run compound learnings extraction
 kiro-cli --agent compound "Extract learnings from the auth feature work"
+```
+
+### Environment variables
+
+```bash
+KIRO_AGENT=developer          # Default implementation agent
+KIRO_VERIFY_AGENT=verifier    # Verification agent
+KIRO_COMPOUND_AGENT=compound  # Learnings extraction agent
+KIRO_VERIFY_EACH=true         # Verify after each story (recommended)
 ```
 
 ## Learnings System
