@@ -72,6 +72,14 @@ assert_exit "Valid minimal agent exits 0" 0 bash "$VALIDATE" "$TMPDIR/valid"
 # Test 6: Non-existent directory
 assert_exit "Non-existent directory exits non-zero" 1 bash "$VALIDATE" "$TMPDIR/nope"
 
+# Test 7: allowedTools not subset of tools
+mkdir -p "$TMPDIR/subset"
+cat > "$TMPDIR/subset/bad.json" <<'EOF'
+{"name":"t","description":"t","prompt":"t","tools":["fs_read"],"allowedTools":["fs_read","fs_write"],"resources":[]}
+EOF
+assert_exit "allowedTools superset exits non-zero" 1 bash "$VALIDATE" "$TMPDIR/subset"
+assert_output_contains "allowedTools superset reported" "not in tools" bash "$VALIDATE" "$TMPDIR/subset"
+
 echo ""
 echo "Results: $passed passed, $failed failed"
 [ "$failed" -eq 0 ]

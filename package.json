@@ -1,0 +1,35 @@
+{
+  "name": "kiro-workflows",
+  "version": "1.0.0",
+  "description": "Multi-agent development workflows for [Kiro CLI](https://kiro.dev/cli/), inspired by [antfarm](https://github.com/snarktank/antfarm).",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "kiro-workflow": "dist/cli.js"
+  },
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jonathanhudak/kiro-workflows.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/jonathanhudak/kiro-workflows/issues"
+  },
+  "homepage": "https://github.com/jonathanhudak/kiro-workflows#readme",
+  "devDependencies": {
+    "@types/node": "^25.2.3",
+    "typescript": "^5.9.3"
+  }
+}
