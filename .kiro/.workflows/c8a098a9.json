@@ -1,0 +1,14 @@
+{
+  "id": "c8a098a9",
+  "workflow": "feature-dev",
+  "task": "Add a hello world endpoint",
+  "status": "failed",
+  "stories": [],
+  "branch": "workflow/feature-dev/1770759241151",
+  "progress": [],
+  "learnings": [],
+  "createdAt": "2026-02-10T21:34:01.181Z",
+  "updatedAt": "2026-02-10T21:34:01.181Z",
+  "iteration": 0,
+  "maxIterations": 15
+}

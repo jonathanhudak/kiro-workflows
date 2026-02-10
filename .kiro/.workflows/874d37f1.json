@@ -1,0 +1,14 @@
+{
+  "id": "874d37f1",
+  "workflow": "feature-dev",
+  "task": "Add hello world",
+  "status": "failed",
+  "stories": [],
+  "branch": "workflow/feature-dev/1770759290209",
+  "progress": [],
+  "learnings": [],
+  "createdAt": "2026-02-10T21:34:50.236Z",
+  "updatedAt": "2026-02-10T21:34:50.236Z",
+  "iteration": 0,
+  "maxIterations": 15
+}

@@ -95,7 +95,11 @@ export class WorkflowOrchestrator {
       run.status = "done";
     } catch (err: any) {
       run.status = "failed";
-      this.ui.addActivity("orchestrator", `❌ ${err.message}`);
+      const msg = err.message || String(err);
+      this.ui.addActivity("orchestrator", `❌ ${msg.split("\n")[0]}`);
+      this.ui.render(run);
+      // Also print full error for debugging
+      error(msg);
     }
 
     this.saveState(run);
