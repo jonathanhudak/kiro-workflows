@@ -48,3 +48,12 @@ Started: 2026-02-10T08:32:00-08:00
 - Created tests/test-us005-prompts.sh with 33 test cases — all passing
 - **Learnings:** Consistent prompt structure across agents (Methodology → Classification → What NOT to Do → Structured Output) makes them predictable and composable
 ---
+
+## 2026-02-10 09:32 - US-006: Convert hooks to proper Kiro hook format
+- Converted post-merge.md and post-review.md from plain markdown to structured hook format with Trigger/Agent/Action/Context sections
+- Added pre-commit.md hook that runs validate-agents.sh before commits
+- Trigger sections use yaml with event/when/branches fields; Agent sections specify agent name and timeout; Action sections have description and steps
+- Created tests/validate-hooks.sh — validates all hooks have required sections and fields
+- Created tests/test-hooks.sh — 19 test cases covering existence, sections, triggers, agent refs, timeouts, format consistency, and validator behavior
+- **Learnings:** Hook format follows pattern: # Hook: <name> header, then ## Trigger (event+when), ## Agent (agent+timeout), ## Action (description+steps), ## Context (explanation). Consistent with agent JSON pattern of structured, machine-parseable sections.
+---
