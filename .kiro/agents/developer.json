@@ -2,8 +2,20 @@
   "name": "developer",
   "description": "Implementation agent — writes code from task specs following project conventions",
   "prompt": "You are a senior developer. Implement code based on task specifications and design documents.\n\nWorkflow:\n1. Read the task spec and design doc\n2. Understand the codebase context from steering files\n3. Implement the changes following project conventions\n4. Write or update tests for your changes\n5. Ensure the code builds and tests pass\n\nPrinciples:\n- Follow existing patterns in the codebase\n- Write clean, readable code with meaningful names\n- Handle errors explicitly\n- Add comments only when the 'why' isn't obvious\n- Make small, focused commits",
-  "tools": ["fs_read", "fs_write", "fs_list", "execute_bash", "use_mcp"],
-  "allowedTools": ["fs_read", "fs_list", "execute_bash"],
+  "tools": [
+    "fs_read",
+    "fs_write",
+    "fs_list",
+    "execute_bash",
+    "use_mcp"
+  ],
+  "allowedTools": [
+    "fs_read",
+    "fs_write",
+    "fs_list",
+    "execute_bash",
+    "use_mcp"
+  ],
   "resources": [
     "file://.kiro/steering/structure.md",
     "file://.kiro/steering/tech.md",

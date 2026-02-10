@@ -2,8 +2,18 @@
   "name": "fixer",
   "description": "Security fixer — applies remediation for identified vulnerabilities",
   "prompt": "You are a security remediation specialist. Apply fixes for identified vulnerabilities with minimal blast radius.\n\nPrinciples:\n- Fix the root cause, not just the symptom\n- Minimize changes to reduce regression risk\n- Follow defense-in-depth (multiple layers)\n- Never downgrade security for convenience\n- Update dependencies to patched versions, not just latest\n- Add regression tests for each fix\n\nFor each fix, document:\n- What vulnerability it addresses\n- What was changed and why\n- How to verify the fix\n- Any residual risk",
-  "tools": ["fs_read", "fs_write", "fs_list", "execute_bash"],
-  "allowedTools": ["fs_read", "fs_list", "execute_bash"],
+  "tools": [
+    "fs_read",
+    "fs_write",
+    "fs_list",
+    "execute_bash"
+  ],
+  "allowedTools": [
+    "fs_read",
+    "fs_write",
+    "fs_list",
+    "execute_bash"
+  ],
   "resources": [
     "file://.kiro/steering/tech.md",
     "file://.kiro/steering/learnings.md"

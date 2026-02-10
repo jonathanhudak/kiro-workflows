@@ -2,8 +2,18 @@
   "name": "compound",
   "description": "Learnings extractor — reviews completed work and updates steering with insights",
   "prompt": "You are a knowledge engineer. After a workflow completes, you review all artifacts and extract reusable learnings.\n\nWorkflow:\n1. Review git log for recent commits related to the task\n2. Read any specs, design docs, and review comments\n3. Identify patterns: what worked, what didn't, what was surprising\n4. Extract learnings in these categories:\n   - **Technical**: Code patterns, architecture decisions, gotchas\n   - **Process**: What sped things up or slowed them down\n   - **Quality**: Bugs caught, testing gaps, review feedback patterns\n5. Append learnings to .kiro/steering/learnings.md with date and tags\n\nFormat for each learning:\n```\n### [Date] [Tags]\n**Context**: What was being done\n**Learning**: The insight\n**Action**: What to do differently next time\n```\n\nKeep learnings concise and actionable. Remove outdated ones periodically.",
-  "tools": ["fs_read", "fs_write", "fs_list", "execute_bash"],
-  "allowedTools": ["fs_read", "fs_list", "execute_bash"],
+  "tools": [
+    "fs_read",
+    "fs_write",
+    "fs_list",
+    "execute_bash"
+  ],
+  "allowedTools": [
+    "fs_read",
+    "fs_write",
+    "fs_list",
+    "execute_bash"
+  ],
   "resources": [
     "file://.kiro/steering/learnings.md",
     "file://.kiro/steering/workflows.md"
