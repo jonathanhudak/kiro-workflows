@@ -66,3 +66,12 @@ Started: 2026-02-10T08:32:00-08:00
 - Created tests/test-setup.sh with 16 tests covering all modes and edge cases
 - **Learnings:** bash `((VAR++))` returns exit 1 when VAR is 0 — use `VAR=$((VAR + 1))` with `set -e`; `set -euo pipefail` + pipe to `grep -q` causes SIGPIPE issues — capture output to variable first
 ---
+
+## 2026-02-11 15:47 - US-008: Create setup.sh - codebase analysis and steering generation (retry fix)
+- Fixed shellcheck SC2034 error: removed unused PKG_NAME variable (was set in 3 places, never read)
+- Fixed shellcheck SC1126 error: the `# shellcheck disable=SC2034` directive was placed as trailing comment instead of preceding line — removed entirely since the variable itself was unnecessary
+- Replaced fallback grep-based PKG_NAME extraction with a no-op comment (jq unavailable path)
+- All existing tests pass: test-setup-steering.sh (22/22), test-setup.sh (16/16)
+- shellcheck setup.sh returns clean (0 issues)
+- **Learnings:** shellcheck directives must be on the line BEFORE the command, never inline as trailing comments. If a variable is only set but never read, remove it entirely rather than suppressing the warning.
+---
