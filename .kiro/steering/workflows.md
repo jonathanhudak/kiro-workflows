@@ -32,10 +32,10 @@ scanner → triager → fixer → verifier → tester → reviewer → compound
 
 ```bash
 # Build
-npm run build
+# no build script configured
 
 # Test
-npm test
+# no test script configured
 ```
 
 ## Context Passing

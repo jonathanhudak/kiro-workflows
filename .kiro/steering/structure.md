@@ -9,7 +9,8 @@
 ```
 
 ## Key Files
-- (none detected)
+
+- `package.json`
 
 ## Conventions
 

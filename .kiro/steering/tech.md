@@ -4,15 +4,15 @@
 
 ## Languages & Frameworks
 
-- Primary: Unknown
+- Primary: JavaScript / Node.js
 
 
 
 ## Build & Test
 
-- Build: `npm run build`
-- Test: `npm test`
-- Lint: `npm run lint`
+- Build: _(no build script in package.json)_
+- Test: _(no test script in package.json)_
+- Lint: _(no lint script in package.json)_
 
 
 ## Patterns
