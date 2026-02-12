@@ -119,3 +119,16 @@ Started: 2026-02-10T08:32:00-08:00
 - Each agent output uses the format specified in its prompt (STATUS line for verifier, VERDICT for reviewer, frontmatter for compound)
 - Created tests/test-examples.sh with 26 test cases — all passing
 - **Learnings:** Realistic examples are more useful than minimal ones — developers learn output format expectations from seeing a complete, consistent walkthrough
+
+## 2026-02-11 17:15 - US-013: Update README.md with setup.sh and workflow-runner.sh usage
+- Rewrote README.md: replaced npm-based Quick Start with setup.sh usage
+- Added dedicated setup.sh section with all flags (--symlink, --force, --help) and explanation of codebase analysis
+- Added dedicated workflow-runner.sh section with all flags (--run, --from, --status, --list, --help)
+- Added progress tracking documentation explaining .kiro/progress.md format and status indicators
+- Updated agent table with actual descriptions from agent JSON files
+- Added links to examples/, CONTRIBUTING.md, and hooks section
+- Added MCP Configuration section
+- Removed programmatic API section (not implemented — this is a config/content repo)
+- Removed npm install references (not published as npm package)
+- Created tests/test-readme.sh with 20 grep-based checks — all passing
+- **Learnings:** Keep README aligned with actual repo state — the original had npm/TypeScript API docs that don't exist. Config repos need setup scripts, not package managers.
