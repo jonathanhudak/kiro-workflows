@@ -87,3 +87,17 @@ Started: 2026-02-10T08:32:00-08:00
 - Tests cover: existence, help output, list output, step ordering, error handling, workflow selection, agent JSON existence
 - **Learnings:** macOS ships bash 3.2 which lacks associative arrays (declare -A). Use case/esac functions as portable lookup tables. Also: `set -e` scripts need `|| true` in test harnesses to capture error output.
 ---
+
+## 2026-02-11 16:25 - US-010: Create workflow-runner.sh - progress tracking
+- Rewrote progress tracking from append-only log to structured, updateable progress.md
+- init_progress now writes all steps as "pending" upfront with workflow metadata (name, started, status, total steps)
+- update_step_status uses sed to modify individual step lines: pending → in-progress → done/skipped
+- mark_workflow_done changes Status to "done" and appends Completed timestamp
+- Added show_progress_summary: colorized display with ✓/▶/⊘/○ indicators and completion count
+- Added --status flag to show progress without advancing the workflow
+- All state transitions clean: no lingering in-progress steps after done/skipped
+- shellcheck clean (0 warnings)
+- Created tests/test-progress-tracking.sh with 17 tests — all passing
+- Existing test-workflow-runner.sh (34 tests) still passes
+- **Learnings:** sed -i on macOS requires .bak extension (sed -i.bak); clean up with rm -f. Using structured markdown with grep/sed for state management works well for simple state machines — no need for JSON/SQLite for this use case.
+---
