@@ -55,6 +55,7 @@ ${BOLD}OPTIONS${RESET}
   --from <step>   Start from a specific step number (1-based)
   --run           Execute kiro-cli commands directly (not just display them)
   --list          List available workflows and their agents
+  --status        Show current workflow progress without advancing
 
 ${BOLD}AVAILABLE WORKFLOWS${RESET}
   1) Feature Development  planner → developer → verifier → tester → reviewer → compound
@@ -66,6 +67,7 @@ ${BOLD}EXAMPLES${RESET}
   ./workflow-runner.sh --from 3           # Resume from step 3
   ./workflow-runner.sh --run              # Execute kiro-cli commands automatically
   ./workflow-runner.sh --list             # Show workflows and agents
+  ./workflow-runner.sh --status           # Show current progress
 EOF
 }
 
@@ -122,27 +124,113 @@ build_kiro_command() {
 
 init_progress() {
   local workflow_name="$1"
-  local total_steps="$2"
+  local agents_str="$2"
   mkdir -p "$(dirname "$PROGRESS_FILE")"
-  cat > "$PROGRESS_FILE" <<EOF
-# Workflow Progress
 
-**Workflow:** ${workflow_name}
-**Started:** $(date -u +"%Y-%m-%dT%H:%M:%SZ")
-**Total Steps:** ${total_steps}
+  IFS=':' read -ra agent_list <<< "$agents_str"
+  local total=${#agent_list[@]}
+  local start_ts
+  start_ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-## Steps
-
-EOF
+  {
+    echo "# Workflow Progress"
+    echo ""
+    echo "**Workflow:** ${workflow_name}"
+    echo "**Started:** ${start_ts}"
+    echo "**Status:** in-progress"
+    echo "**Total Steps:** ${total}"
+    echo ""
+    echo "## Steps"
+    echo ""
+    local i=1
+    for agent in "${agent_list[@]}"; do
+      echo "- Step ${i}: **${agent}** — pending"
+      i=$((i + 1))
+    done
+  } > "$PROGRESS_FILE"
 }
 
-log_step_progress() {
+update_step_status() {
   local step_num="$1"
   local agent="$2"
   local status="$3"
   local timestamp
   timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-  echo "- [${status}] Step ${step_num}: **${agent}** (${timestamp})" >> "$PROGRESS_FILE"
+
+  if [ ! -f "$PROGRESS_FILE" ]; then
+    return 1
+  fi
+
+  # Replace the line for this step with the new status + timestamp
+  local pattern="- Step ${step_num}: \*\*${agent}\*\* —"
+  local replacement="- Step ${step_num}: **${agent}** — ${status} (${timestamp})"
+  sed -i.bak "s|${pattern}.*|${replacement}|" "$PROGRESS_FILE"
+  rm -f "${PROGRESS_FILE}.bak"
+}
+
+mark_workflow_done() {
+  local end_ts
+  end_ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+  if [ ! -f "$PROGRESS_FILE" ]; then
+    return 1
+  fi
+
+  # Update status to done
+  sed -i.bak "s|^\*\*Status:\*\* in-progress|\*\*Status:\*\* done|" "$PROGRESS_FILE"
+  rm -f "${PROGRESS_FILE}.bak"
+
+  # Append end time
+  echo "" >> "$PROGRESS_FILE"
+  echo "**Completed:** ${end_ts}" >> "$PROGRESS_FILE"
+}
+
+show_progress_summary() {
+  if [ ! -f "$PROGRESS_FILE" ]; then
+    echo -e "${YELLOW}No progress file found. No workflow in progress.${RESET}"
+    return 0
+  fi
+
+  echo -e "${BOLD}━━━ Workflow Progress ━━━${RESET}"
+  echo ""
+
+  # Extract header info
+  local workflow_name status total_steps started
+  workflow_name=$(grep '^\*\*Workflow:\*\*' "$PROGRESS_FILE" | sed 's/\*\*Workflow:\*\* //')
+  status=$(grep '^\*\*Status:\*\*' "$PROGRESS_FILE" | sed 's/\*\*Status:\*\* //')
+  total_steps=$(grep '^\*\*Total Steps:\*\*' "$PROGRESS_FILE" | sed 's/\*\*Total Steps:\*\* //')
+  started=$(grep '^\*\*Started:\*\*' "$PROGRESS_FILE" | sed 's/\*\*Started:\*\* //')
+
+  echo -e "  ${BOLD}Workflow:${RESET} ${workflow_name}"
+  echo -e "  ${BOLD}Status:${RESET}   ${status}"
+  echo -e "  ${BOLD}Started:${RESET}  ${started}"
+  echo -e "  ${BOLD}Steps:${RESET}    ${total_steps}"
+
+  local completed_ts
+  completed_ts=$(grep '^\*\*Completed:\*\*' "$PROGRESS_FILE" | sed 's/\*\*Completed:\*\* //' || true)
+  if [ -n "$completed_ts" ]; then
+    echo -e "  ${BOLD}Completed:${RESET} ${completed_ts}"
+  fi
+  echo ""
+
+  # Show step statuses with color
+  local done_count=0
+  while IFS= read -r line; do
+    if echo "$line" | grep -q '— done'; then
+      echo -e "  ${GREEN}✓${RESET} ${line#- }"
+      done_count=$((done_count + 1))
+    elif echo "$line" | grep -q '— in-progress'; then
+      echo -e "  ${YELLOW}▶${RESET} ${line#- }"
+    elif echo "$line" | grep -q '— skipped'; then
+      echo -e "  ${DIM}⊘${RESET} ${line#- }"
+    elif echo "$line" | grep -q '— pending'; then
+      echo -e "  ${DIM}○${RESET} ${line#- }"
+    fi
+  done < "$PROGRESS_FILE"
+
+  echo ""
+  echo -e "  ${DIM}${done_count}/${total_steps} complete${RESET}"
+  echo ""
 }
 
 run_workflow() {
@@ -165,8 +253,11 @@ run_workflow() {
 
   # Initialize progress file (only if starting from step 1)
   if [ "$start_from" -eq 1 ]; then
-    init_progress "$workflow_name" "$total"
+    init_progress "$workflow_name" "$agents_str"
   fi
+
+  # Show current progress summary
+  show_progress_summary
 
   local step=1
   for agent in "${agents[@]}"; do
@@ -185,14 +276,16 @@ run_workflow() {
     echo -e "${BLUE}  \$ ${cmd}${RESET}"
     echo ""
 
+    # Mark step as in-progress
+    update_step_status "$step" "$agent" "in-progress"
+
     if [ "$auto_run" = "true" ]; then
       echo -e "${YELLOW}Running...${RESET}"
-      log_step_progress "$step" "$agent" "x"
       if $cmd; then
-        log_step_progress "$step" "$agent" "✓"
+        update_step_status "$step" "$agent" "done"
         echo -e "${GREEN}✓ Step ${step} complete${RESET}"
       else
-        log_step_progress "$step" "$agent" "✗"
+        update_step_status "$step" "$agent" "failed"
         echo -e "${RED}✗ Step ${step} failed${RESET}" >&2
         echo -e "${YELLOW}Fix the issue and resume with: ./workflow-runner.sh --from ${step}${RESET}"
         return 1
@@ -202,16 +295,16 @@ run_workflow() {
       case "$action" in
         s|S)
           echo -e "${DIM}Skipped${RESET}"
-          log_step_progress "$step" "$agent" "skipped"
+          update_step_status "$step" "$agent" "skipped"
           ;;
         q|Q)
           echo -e "${YELLOW}Stopped at step ${step}. Resume with: ./workflow-runner.sh --from ${step}${RESET}"
-          log_step_progress "$step" "$agent" "stopped"
+          update_step_status "$step" "$agent" "pending"
           return 0
           ;;
         *)
           echo -e "${BLUE}  \$ ${cmd}${RESET}"
-          log_step_progress "$step" "$agent" "✓"
+          update_step_status "$step" "$agent" "done"
           echo -e "${GREEN}✓ Step ${step} noted as complete${RESET}"
           ;;
       esac
@@ -221,6 +314,7 @@ run_workflow() {
     step=$((step + 1))
   done
 
+  mark_workflow_done
   echo -e "${GREEN}${BOLD}━━━ Workflow Complete ━━━${RESET}"
   echo -e "${DIM}Progress saved to ${PROGRESS_FILE}${RESET}"
 }
@@ -247,6 +341,10 @@ while [[ $# -gt 0 ]]; do
     --run)
       AUTO_RUN="true"
       shift
+      ;;
+    --status)
+      show_progress_summary
+      exit 0
       ;;
     --list)
       list_workflows
