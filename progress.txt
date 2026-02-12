@@ -101,3 +101,21 @@ Started: 2026-02-10T08:32:00-08:00
 - Existing test-workflow-runner.sh (34 tests) still passes
 - **Learnings:** sed -i on macOS requires .bak extension (sed -i.bak); clean up with rm -f. Using structured markdown with grep/sed for state management works well for simple state machines — no need for JSON/SQLite for this use case.
 ---
+---
+
+## 2026-02-11 16:52 - US-011: Add examples directory with sample feature-dev workflow
+- Created examples/README.md explaining the example and how to follow along
+- Created examples/feature-dev-workflow/ with 9 files:
+  - 00-task-description.md: "Add User Settings Page" feature request (Next.js, TypeScript, Tailwind)
+  - 01-planner-output-requirements.md: 9 functional requirements, 4 non-functional, assumptions
+  - 01-planner-output-design.md: Route structure, component hierarchy, Prisma schema, 3 ADRs
+  - 01-planner-output-tasks.md: 6 tasks with S/M/L sizing, dependency graph, file lists
+  - 02-developer-output.md: Implementation summary with file changes table, commit list, notes
+  - 03-verifier-output.md: STATUS: done, acceptance criteria table (9/9 pass), build output
+  - 04-tester-output.md: 53 tests across 7 suites, 94% coverage, test names listed
+  - 05-reviewer-output.md: VERDICT: APPROVE, 2 SHOULD_FIX + 3 SUGGESTION findings
+  - 06-compound-output.md: YAML frontmatter, 4 learnings (technical/process/quality)
+- All outputs are internally consistent (same feature, planner→developer→verifier chain)
+- Each agent output uses the format specified in its prompt (STATUS line for verifier, VERDICT for reviewer, frontmatter for compound)
+- Created tests/test-examples.sh with 26 test cases — all passing
+- **Learnings:** Realistic examples are more useful than minimal ones — developers learn output format expectations from seeing a complete, consistent walkthrough
