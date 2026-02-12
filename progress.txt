@@ -75,3 +75,15 @@ Started: 2026-02-10T08:32:00-08:00
 - shellcheck setup.sh returns clean (0 issues)
 - **Learnings:** shellcheck directives must be on the line BEFORE the command, never inline as trailing comments. If a variable is only set but never read, remove it entirely rather than suppressing the warning.
 ---
+
+## 2026-02-11 16:07 - US-009: Create workflow-runner.sh - workflow selection and agent stepping
+- Created workflow-runner.sh with interactive workflow selection menu (Feature Dev, Bug Fix, Security Audit)
+- Each workflow shows ordered agent steps with descriptions and kiro-cli commands
+- Supports --help, --list, --from <step> (resume), --run (auto-execute), skip/quit during interactive mode
+- Tracks progress in .kiro/progress.md with timestamps per step
+- bash 3 compatible (no associative arrays — uses case/esac function for agent descriptions)
+- shellcheck clean (0 warnings)
+- Created tests/test-workflow-runner.sh with 34 test cases — all passing
+- Tests cover: existence, help output, list output, step ordering, error handling, workflow selection, agent JSON existence
+- **Learnings:** macOS ships bash 3.2 which lacks associative arrays (declare -A). Use case/esac functions as portable lookup tables. Also: `set -e` scripts need `|| true` in test harnesses to capture error output.
+---
