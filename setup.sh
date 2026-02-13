@@ -164,7 +164,6 @@ echo "==> Analyzing codebase at $TARGET_DIR..."
 # --- Detect package.json ---
 PKG_JSON="$TARGET_DIR/package.json"
 HAS_PKG=false
-PKG_NAME=""
 PKG_FRAMEWORK=""
 PKG_BUILD_CMD=""
 PKG_TEST_CMD=""
@@ -178,7 +177,6 @@ if [[ -f "$PKG_JSON" ]]; then
   echo "    ✓ Found package.json"
 
   if command -v jq &>/dev/null; then
-    PKG_NAME=$(jq -r '.name // ""' "$PKG_JSON" 2>/dev/null)
     PKG_BUILD_CMD=$(jq -r '.scripts.build // ""' "$PKG_JSON" 2>/dev/null)
     PKG_TEST_CMD=$(jq -r '.scripts.test // ""' "$PKG_JSON" 2>/dev/null)
     PKG_LINT_CMD=$(jq -r '.scripts.lint // ""' "$PKG_JSON" 2>/dev/null)
@@ -210,7 +208,7 @@ if [[ -f "$PKG_JSON" ]]; then
   else
     echo "    ⚠ jq not installed — limited package.json parsing"
     # Fallback: grep for basic info
-    PKG_NAME=$(grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' "$PKG_JSON" | head -1 | sed 's/.*: *"//;s/"//') # shellcheck disable=SC2034
+    : # jq not available — limited parsing, skip name extraction
   fi
 else
   echo "    ⚠ No package.json found — using generic templates"

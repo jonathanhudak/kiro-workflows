@@ -66,3 +66,69 @@ Started: 2026-02-10T08:32:00-08:00
 - Created tests/test-setup.sh with 16 tests covering all modes and edge cases
 - **Learnings:** bash `((VAR++))` returns exit 1 when VAR is 0 — use `VAR=$((VAR + 1))` with `set -e`; `set -euo pipefail` + pipe to `grep -q` causes SIGPIPE issues — capture output to variable first
 ---
+
+## 2026-02-11 15:47 - US-008: Create setup.sh - codebase analysis and steering generation (retry fix)
+- Fixed shellcheck SC2034 error: removed unused PKG_NAME variable (was set in 3 places, never read)
+- Fixed shellcheck SC1126 error: the `# shellcheck disable=SC2034` directive was placed as trailing comment instead of preceding line — removed entirely since the variable itself was unnecessary
+- Replaced fallback grep-based PKG_NAME extraction with a no-op comment (jq unavailable path)
+- All existing tests pass: test-setup-steering.sh (22/22), test-setup.sh (16/16)
+- shellcheck setup.sh returns clean (0 issues)
+- **Learnings:** shellcheck directives must be on the line BEFORE the command, never inline as trailing comments. If a variable is only set but never read, remove it entirely rather than suppressing the warning.
+---
+
+## 2026-02-11 16:07 - US-009: Create workflow-runner.sh - workflow selection and agent stepping
+- Created workflow-runner.sh with interactive workflow selection menu (Feature Dev, Bug Fix, Security Audit)
+- Each workflow shows ordered agent steps with descriptions and kiro-cli commands
+- Supports --help, --list, --from <step> (resume), --run (auto-execute), skip/quit during interactive mode
+- Tracks progress in .kiro/progress.md with timestamps per step
+- bash 3 compatible (no associative arrays — uses case/esac function for agent descriptions)
+- shellcheck clean (0 warnings)
+- Created tests/test-workflow-runner.sh with 34 test cases — all passing
+- Tests cover: existence, help output, list output, step ordering, error handling, workflow selection, agent JSON existence
+- **Learnings:** macOS ships bash 3.2 which lacks associative arrays (declare -A). Use case/esac functions as portable lookup tables. Also: `set -e` scripts need `|| true` in test harnesses to capture error output.
+---
+
+## 2026-02-11 16:25 - US-010: Create workflow-runner.sh - progress tracking
+- Rewrote progress tracking from append-only log to structured, updateable progress.md
+- init_progress now writes all steps as "pending" upfront with workflow metadata (name, started, status, total steps)
+- update_step_status uses sed to modify individual step lines: pending → in-progress → done/skipped
+- mark_workflow_done changes Status to "done" and appends Completed timestamp
+- Added show_progress_summary: colorized display with ✓/▶/⊘/○ indicators and completion count
+- Added --status flag to show progress without advancing the workflow
+- All state transitions clean: no lingering in-progress steps after done/skipped
+- shellcheck clean (0 warnings)
+- Created tests/test-progress-tracking.sh with 17 tests — all passing
+- Existing test-workflow-runner.sh (34 tests) still passes
+- **Learnings:** sed -i on macOS requires .bak extension (sed -i.bak); clean up with rm -f. Using structured markdown with grep/sed for state management works well for simple state machines — no need for JSON/SQLite for this use case.
+---
+---
+
+## 2026-02-11 16:52 - US-011: Add examples directory with sample feature-dev workflow
+- Created examples/README.md explaining the example and how to follow along
+- Created examples/feature-dev-workflow/ with 9 files:
+  - 00-task-description.md: "Add User Settings Page" feature request (Next.js, TypeScript, Tailwind)
+  - 01-planner-output-requirements.md: 9 functional requirements, 4 non-functional, assumptions
+  - 01-planner-output-design.md: Route structure, component hierarchy, Prisma schema, 3 ADRs
+  - 01-planner-output-tasks.md: 6 tasks with S/M/L sizing, dependency graph, file lists
+  - 02-developer-output.md: Implementation summary with file changes table, commit list, notes
+  - 03-verifier-output.md: STATUS: done, acceptance criteria table (9/9 pass), build output
+  - 04-tester-output.md: 53 tests across 7 suites, 94% coverage, test names listed
+  - 05-reviewer-output.md: VERDICT: APPROVE, 2 SHOULD_FIX + 3 SUGGESTION findings
+  - 06-compound-output.md: YAML frontmatter, 4 learnings (technical/process/quality)
+- All outputs are internally consistent (same feature, planner→developer→verifier chain)
+- Each agent output uses the format specified in its prompt (STATUS line for verifier, VERDICT for reviewer, frontmatter for compound)
+- Created tests/test-examples.sh with 26 test cases — all passing
+- **Learnings:** Realistic examples are more useful than minimal ones — developers learn output format expectations from seeing a complete, consistent walkthrough
+
+## 2026-02-11 17:15 - US-013: Update README.md with setup.sh and workflow-runner.sh usage
+- Rewrote README.md: replaced npm-based Quick Start with setup.sh usage
+- Added dedicated setup.sh section with all flags (--symlink, --force, --help) and explanation of codebase analysis
+- Added dedicated workflow-runner.sh section with all flags (--run, --from, --status, --list, --help)
+- Added progress tracking documentation explaining .kiro/progress.md format and status indicators
+- Updated agent table with actual descriptions from agent JSON files
+- Added links to examples/, CONTRIBUTING.md, and hooks section
+- Added MCP Configuration section
+- Removed programmatic API section (not implemented — this is a config/content repo)
+- Removed npm install references (not published as npm package)
+- Created tests/test-readme.sh with 20 grep-based checks — all passing
+- **Learnings:** Keep README aligned with actual repo state — the original had npm/TypeScript API docs that don't exist. Config repos need setup scripts, not package managers.

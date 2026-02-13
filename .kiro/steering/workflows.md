@@ -28,6 +28,16 @@ triager → investigator → developer → verifier → reviewer → compound
 scanner → triager → fixer → verifier → tester → reviewer → compound
 ```
 
+## Build & Test Commands
+
+```bash
+# Build
+# no build script configured
+
+# Test
+# no test script configured
+```
+
 ## Context Passing
 
 Agents share context through:
@@ -35,17 +45,6 @@ Agents share context through:
 - **Steering files** — persistent project knowledge
 - **Git history** — recent commits and diffs
 - **Learnings** — insights from past workflows
-
-## Running a Workflow
-
-```bash
-# Step through manually
-kiro-cli --agent planner "Plan: Add user authentication with OAuth2"
-# ... review output, iterate ...
-kiro-cli --agent developer "Implement task 1: Set up OAuth2 provider"
-# ... continue through pipeline ...
-kiro-cli --agent compound "Extract learnings from the auth feature"
-```
 
 ## Tips
 
