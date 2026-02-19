@@ -5,17 +5,17 @@ const BLUE = "\x1b[34m";
 const NC = "\x1b[0m";
 
 export function log(msg: string) {
-  console.error(`${BLUE}[kiro-workflow]${NC} ${msg}`);
+  console.error(`${BLUE}[spool]${NC} ${msg}`);
 }
 
 export function success(msg: string) {
-  console.error(`${GREEN}[kiro-workflow]${NC} ${msg}`);
+  console.error(`${GREEN}[spool]${NC} ${msg}`);
 }
 
 export function warn(msg: string) {
-  console.error(`${YELLOW}[kiro-workflow]${NC} ${msg}`);
+  console.error(`${YELLOW}[spool]${NC} ${msg}`);
 }
 
 export function error(msg: string) {
-  console.error(`${RED}[kiro-workflow]${NC} ${msg}`);
+  console.error(`${RED}[spool]${NC} ${msg}`);
 }

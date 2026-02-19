@@ -1,5 +1,5 @@
 /**
- * Terminal UI for kiro-workflow progress.
+ * Terminal UI for spool workflow progress.
  *
  * Renders a compact, live-updating display:
  *
@@ -24,7 +24,7 @@
  * Uses ANSI escape codes to redraw in place (no scroll spam).
  */
 
-import { WorkflowRun, Story } from "./types.js";
+import type { WorkflowRun, Story } from "./core/types.js";
 
 // ANSI
 const ESC = "\x1b";

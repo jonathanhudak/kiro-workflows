@@ -1,33 +1,39 @@
 {
-  "name": "kiro-workflows",
-  "version": "1.0.0",
-  "description": "Multi-agent development workflows for [Kiro CLI](https://kiro.dev/cli/), inspired by [antfarm](https://github.com/snarktank/antfarm).",
+  "name": "spool",
+  "version": "2.0.0",
+  "description": "Provider-agnostic multi-agent workflow orchestration CLI. Define agents, workflows, and the Ralph loop in YAML — run them on any AI runtime.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "kiro-workflow": "dist/cli.js"
+    "spool": "dist/cli.js"
   },
   "directories": {
     "doc": "docs",
-    "test": "tests"
+    "test": "src/tests"
   },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test dist/tests/**/*.test.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jonathanhudak/kiro-workflows.git"
+    "url": "git+https://github.com/jonathanhudak/spool.git"
   },
-  "keywords": [],
+  "keywords": [
+    "ai",
+    "agents",
+    "workflow",
+    "orchestration",
+    "cli"
+  ],
   "author": "",
   "license": "ISC",
   "type": "module",
   "bugs": {
-    "url": "https://github.com/jonathanhudak/kiro-workflows/issues"
+    "url": "https://github.com/jonathanhudak/spool/issues"
   },
-  "homepage": "https://github.com/jonathanhudak/kiro-workflows#readme",
+  "homepage": "https://github.com/jonathanhudak/spool#readme",
   "devDependencies": {
     "@types/node": "^25.2.3",
     "typescript": "^5.9.3"
